@@ -1,11 +1,11 @@
-# Deployment Guide - DigitalOcean Droplet
+# Deployment Guide - Docker Production Deployment
 
-This guide will walk you through deploying **Zenith Downloader** on a DigitalOcean Droplet using Docker.
+This guide will walk you through deploying **Zenith Downloader** using Docker on any cloud provider (DigitalOcean, Google Cloud, AWS, etc.).
 
 ## Prerequisites
 
-- A DigitalOcean Droplet running Ubuntu 22.04 LTS (or similar)
-- SSH access to your droplet
+- A Linux VPS/VM running Ubuntu 22.04 LTS or similar (works on DigitalOcean Droplet, Google Cloud Compute Engine, AWS EC2, etc.)
+- SSH access to your server
 - A domain name (optional, but recommended)
 - Gemini API key (optional, for AI rename feature)
 

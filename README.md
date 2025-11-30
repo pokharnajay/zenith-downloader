@@ -15,9 +15,9 @@ A high-performance video downloader built with Next.js. Features a beautiful dar
 
 ## Quick Start - Production Deployment
 
-### Deploy on DigitalOcean Droplet (Docker)
+### Deploy with Docker (DigitalOcean / Google Cloud / Any VPS)
 
-The easiest way to deploy this app is using Docker on a DigitalOcean Droplet:
+Deploy this app using Docker on any cloud provider:
 
 ```bash
 # 1. SSH into your server
@@ -123,9 +123,6 @@ docker-compose up -d --build
 ├── lib/
 │   ├── api.ts                   # Frontend API client
 │   └── types.ts                 # TypeScript types
-├── api/                         # Python serverless functions (Vercel)
-│   ├── analyze.py
-│   └── download.py
 ├── Dockerfile                   # Production Docker image
 ├── docker-compose.yml           # Docker Compose config
 └── DEPLOYMENT.md                # Complete deployment guide
@@ -145,19 +142,20 @@ docker-compose up -d --build
 
 ## Deployment Options
 
-### 1. DigitalOcean Droplet (Recommended)
-- See [DEPLOYMENT.md](./DEPLOYMENT.md) for step-by-step instructions
-- Uses Docker for easy deployment and updates
-- Costs ~$6/month for a basic droplet
+### Docker Deployment (Recommended)
+Works on any cloud provider with Docker support:
 
-### 2. Vercel (Requires Modifications)
-- Note: `yt-dlp` binary won't work on Vercel serverless
-- You'll need to use the Python serverless functions in `/api` folder
-- See `vercel.json` for configuration
+- **DigitalOcean Droplet** - ~$6/month for basic droplet
+- **Google Cloud Compute Engine** - Similar pricing, great performance
+- **AWS EC2** - Wide range of instance options
+- **Any VPS with Docker** - The Dockerfile and docker-compose.yml work on any Linux server
 
-### 3. Any VPS with Docker
-- The Dockerfile and docker-compose.yml work on any Linux server
-- Just install Docker and run `docker-compose up -d`
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for step-by-step instructions.
+
+**Quick Deploy:**
+```bash
+docker-compose up -d --build
+```
 
 ---
 
