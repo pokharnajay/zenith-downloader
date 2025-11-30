@@ -1,7 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import urllib.request
-import urllib.error
+import yt_dlp
 
 
 class handler(BaseHTTPRequestHandler):
@@ -23,46 +22,57 @@ class handler(BaseHTTPRequestHandler):
                 self.send_error_response(400, 'URL is required')
                 return
 
-            # Extract video ID from YouTube URL
-            video_id = None
-            if 'youtube.com/watch' in url:
-                video_id = url.split('v=')[1].split('&')[0]
-            elif 'youtu.be/' in url:
-                video_id = url.split('youtu.be/')[1].split('?')[0]
-
-            if not video_id:
-                self.send_error_response(400, 'Invalid YouTube URL')
-                return
-
-            # Get video info from YouTube oEmbed API (no auth needed)
-            oembed_url = f'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json'
-
-            req = urllib.request.Request(oembed_url, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            })
-
-            with urllib.request.urlopen(req) as response:
-                oembed_data = json.loads(response.read().decode())
-
-            # Build metadata from oEmbed
-            metadata = {
-                'title': oembed_data.get('title', 'Unknown Title'),
-                'thumbnail': f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg',
-                'duration': 'Unknown'  # oEmbed doesn't provide duration
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'skip_download': True,
             }
 
-            # Provide standard quality options (Cobalt will handle the actual download)
-            qualities = [
-                {'id': '1080', 'resolution': '1080p', 'fps': 30, 'ext': 'mp4', 'size': 'Unknown', 'note': None},
-                {'id': '720', 'resolution': '720p', 'fps': 30, 'ext': 'mp4', 'size': 'Unknown', 'note': None},
-                {'id': '480', 'resolution': '480p', 'fps': 30, 'ext': 'mp4', 'size': 'Unknown', 'note': None},
-                {'id': '360', 'resolution': '360p', 'fps': 30, 'ext': 'mp4', 'size': 'Unknown', 'note': None},
-            ]
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+
+                # Format duration
+                duration_secs = info.get('duration', 0)
+                if duration_secs:
+                    hours = int(duration_secs // 3600)
+                    minutes = int((duration_secs % 3600) // 60)
+                    secs = int(duration_secs % 60)
+                    if hours > 0:
+                        duration = f"{hours}:{minutes:02d}:{secs:02d}"
+                    else:
+                        duration = f"{minutes}:{secs:02d}"
+                else:
+                    duration = "Unknown"
+
+                metadata = {
+                    'title': info.get('title', 'Unknown Title'),
+                    'thumbnail': info.get('thumbnail', ''),
+                    'duration': duration
+                }
+
+                # Simple options: Video or Audio
+                qualities = [
+                    {
+                        'id': 'video',
+                        'resolution': 'Video',
+                        'fps': 0,
+                        'ext': 'mp4',
+                        'size': 'Best quality',
+                        'note': 'Video + Audio'
+                    },
+                    {
+                        'id': 'audio',
+                        'resolution': 'Audio',
+                        'fps': 0,
+                        'ext': 'mp3',
+                        'size': 'Best quality',
+                        'note': 'Audio only'
+                    }
+                ]
 
             response_data = {
                 'metadata': metadata,
-                'qualities': qualities,
-                'video_id': video_id
+                'qualities': qualities
             }
 
             self.send_response(200)
@@ -71,8 +81,6 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(response_data).encode())
 
-        except urllib.error.HTTPError as e:
-            self.send_error_response(e.code, f'Failed to fetch video info: {e.reason}')
         except Exception as e:
             self.send_error_response(500, str(e))
 
