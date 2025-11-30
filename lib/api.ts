@@ -1,4 +1,4 @@
-import { AnalyzeResponse, DownloadProgress } from './types';
+import { AnalyzeResponse } from './types';
 
 export const fetchAnalysis = async (url: string): Promise<AnalyzeResponse> => {
   const response = await fetch('/api/analyze', {
@@ -8,8 +8,8 @@ export const fetchAnalysis = async (url: string): Promise<AnalyzeResponse> => {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || 'Failed to analyze video');
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to analyze video');
   }
 
   return response.json();
@@ -30,68 +30,39 @@ export const generateSmartFilename = async (title: string): Promise<string> => {
   return data.filename;
 };
 
-export async function* downloadVideo(
+export interface DownloadUrlResponse {
+  video_url: string;
+  audio_url: string | null;
+  title: string;
+  ext: string;
+  needs_merge: boolean;
+}
+
+export const getDownloadUrl = async (
   url: string,
-  formatId: string,
-  filename: string,
-  downloadPath: string
-): AsyncGenerator<DownloadProgress> {
+  formatId: string
+): Promise<DownloadUrlResponse> => {
   const response = await fetch('/api/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, format_id: formatId, filename, download_path: downloadPath }),
+    body: JSON.stringify({ url, format_id: formatId }),
   });
 
-  if (!response.body) throw new Error("No response body");
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  let lastPercentage = 0;
-  let lastSpeed = '0 MiB/s';
-  let lastEta = '--';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(line.slice(6));
-
-          if (data.status === 'progress') {
-            lastPercentage = data.percentage;
-            lastSpeed = data.speed;
-            lastEta = data.eta;
-
-            yield {
-              percentage: lastPercentage,
-              speed: lastSpeed,
-              eta: lastEta,
-              currentTask: 'Downloading video data...'
-            };
-          } else if (data.status === 'log') {
-            yield {
-              percentage: lastPercentage,
-              speed: lastSpeed,
-              eta: lastEta,
-              currentTask: data.message
-            };
-          } else if (data.status === 'complete') {
-            return;
-          } else if (data.status === 'error') {
-            throw new Error(data.message);
-          }
-        } catch (e) {
-          console.error("Parse error", e);
-        }
-      }
-    }
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get download URL');
   }
-}
+
+  return response.json();
+};
+
+export const triggerBrowserDownload = (url: string, filename: string) => {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};

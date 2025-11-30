@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link2, Download, CheckCircle2, AlertCircle, Wand2, RefreshCcw, Folder } from 'lucide-react';
+import { Link2, Download, CheckCircle2, AlertCircle, Wand2, RefreshCcw } from 'lucide-react';
 
-import { AppStep, VideoQuality, VideoMetadata, DownloadProgress } from '@/lib/types';
-import { fetchAnalysis, downloadVideo, generateSmartFilename } from '@/lib/api';
+import { AppStep, VideoQuality, VideoMetadata } from '@/lib/types';
+import { fetchAnalysis, generateSmartFilename, getDownloadUrl, triggerBrowserDownload } from '@/lib/api';
 import { QualitySelector } from '@/components/QualitySelector';
-import { TerminalOutput } from '@/components/TerminalOutput';
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>(AppStep.IDLE);
@@ -17,25 +16,22 @@ export default function Home() {
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
   const [filename, setFilename] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
-
-  const [progress, setProgress] = useState<DownloadProgress | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [completedFile, setCompletedFile] = useState<string>('');
-  const [downloadPath, setDownloadPath] = useState<string>('~/Downloads');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Step 1: Analyze Link
   const handleAnalyze = async () => {
     if (!url) return;
     setStep(AppStep.FETCHING);
+    setErrorMessage('');
     try {
       const { metadata: meta, qualities: quals } = await fetchAnalysis(url);
       setMetadata(meta);
       setQualities(quals);
       setFilename(meta.title.replace(/[^a-zA-Z0-9]/g, '_'));
       setStep(AppStep.SELECTION);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setLogs(prev => [...prev, String(e)]);
+      setErrorMessage(e.message || 'Failed to analyze video');
       setStep(AppStep.ERROR);
     }
   };
@@ -58,26 +54,26 @@ export default function Home() {
   const handleDownload = async () => {
     if (!selectedQuality || !filename) return;
     setStep(AppStep.DOWNLOADING);
-    setLogs(prev => [...prev, `Initializing download for ${filename}...`]);
+    setErrorMessage('');
 
     try {
-      const stream = downloadVideo(url, selectedQuality, filename, downloadPath);
-      for await (const update of stream) {
-        setProgress(update);
-        setLogs(prev => {
-          const lastLog = prev[prev.length - 1];
-          if (lastLog !== update.currentTask) {
-             return [...prev, update.currentTask];
-          }
-          return prev;
-        });
+      // Get download URL from Python backend
+      const downloadData = await getDownloadUrl(url, selectedQuality);
+
+      if (downloadData.needs_merge) {
+        // If video needs audio merge, show a message
+        setErrorMessage('This format requires audio merging which is not supported in browser. Please select a format with audio included.');
+        setStep(AppStep.ERROR);
+        return;
       }
 
-      setLogs(prev => [...prev, "Download completed successfully."]);
-      setCompletedFile(`${filename}.mp4`);
+      // Trigger browser download
+      const downloadFilename = `${filename}.${downloadData.ext}`;
+      triggerBrowserDownload(downloadData.video_url, downloadFilename);
+
       setStep(AppStep.COMPLETED);
     } catch (e: any) {
-      setLogs(prev => [...prev, `Error: ${e.message}`]);
+      setErrorMessage(e.message || 'Download failed');
       setStep(AppStep.ERROR);
     }
   };
@@ -89,8 +85,7 @@ export default function Home() {
     setQualities([]);
     setSelectedQuality(null);
     setFilename('');
-    setLogs([]);
-    setProgress(null);
+    setErrorMessage('');
   };
 
   return (
@@ -157,22 +152,6 @@ export default function Home() {
                     />
                     <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-zinc-200 transition-colors" size={20} />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Download Location</label>
-                   <div className="flex gap-2">
-                      <div className="relative group flex-1">
-                        <input
-                          type="text"
-                          value={downloadPath}
-                          onChange={(e) => setDownloadPath(e.target.value)}
-                          placeholder="~/Downloads"
-                          className="w-full bg-black/50 border border-zinc-800 text-zinc-100 rounded-xl px-5 py-4 pl-12 outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent transition-all placeholder:text-zinc-600 font-mono text-sm"
-                        />
-                        <Folder className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-zinc-200 transition-colors" size={20} />
-                      </div>
-                   </div>
                 </div>
 
                 <button
@@ -279,37 +258,19 @@ export default function Home() {
                 key="downloading"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="space-y-6"
+                className="flex flex-col items-center justify-center py-12"
               >
-                 <div className="text-center space-y-2">
-                    <h3 className="text-zinc-200 font-medium">Downloading...</h3>
-                    <p className="text-xs text-zinc-500 font-mono">{progress?.currentTask || 'Preparing'}</p>
-                 </div>
-
-                 {/* Progress Bar */}
-                 <div className="relative h-2 bg-zinc-800 rounded-full overflow-hidden">
-                    <motion.div
-                      className="absolute inset-y-0 left-0 bg-white"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress?.percentage || 0}%` }}
-                      transition={{ type: "spring", stiffness: 50 }}
-                    />
-                 </div>
-
-                 {/* Stats Grid */}
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/50 text-center">
-                       <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Speed</div>
-                       <div className="text-zinc-200 font-mono">{progress?.speed || '--'}</div>
-                    </div>
-                    <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/50 text-center">
-                       <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">ETA</div>
-                       <div className="text-zinc-200 font-mono">{progress?.eta || '--'}</div>
-                    </div>
-                 </div>
-
-                 {/* Terminal Logs */}
-                 <TerminalOutput logs={logs} />
+                <div className="relative w-16 h-16">
+                   <motion.div
+                      className="absolute inset-0 border-4 border-zinc-800 rounded-full"
+                   />
+                   <motion.div
+                      className="absolute inset-0 border-4 border-t-zinc-100 border-r-transparent border-b-transparent border-l-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                   />
+                </div>
+                <p className="mt-6 text-zinc-400 font-mono text-sm animate-pulse">Preparing download...</p>
               </motion.div>
             )}
 
@@ -326,9 +287,9 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-2">
-                     <h2 className="text-2xl font-light text-white">Success!</h2>
+                     <h2 className="text-2xl font-light text-white">Download Started!</h2>
                      <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                        <span className="font-mono text-zinc-300 bg-zinc-900 px-1 rounded">{completedFile}</span> has been saved to <span className="font-mono text-zinc-300 bg-zinc-900 px-1 rounded">{downloadPath}</span>
+                        Your file should begin downloading. Check your browser&apos;s downloads.
                      </p>
                   </div>
 
@@ -354,8 +315,8 @@ export default function Home() {
                      <AlertCircle size={32} />
                   </div>
                   <h3 className="text-zinc-200 font-medium mb-2">Something went wrong</h3>
-                  <p className="text-zinc-500 text-sm mb-6">
-                    {logs[logs.length-1] || "Failed to connect to backend."}
+                  <p className="text-zinc-500 text-sm mb-6 max-w-xs">
+                    {errorMessage || "Failed to process your request."}
                   </p>
                   <button onClick={reset} className="text-zinc-400 hover:text-white underline text-sm">Try Again</button>
                </motion.div>

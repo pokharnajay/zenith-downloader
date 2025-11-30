@@ -1,0 +1,18 @@
+{
+  "functions": {
+    "api/*.py": {
+      "runtime": "python3.11",
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/py/analyze",
+      "destination": "/api/analyze.py"
+    },
+    {
+      "source": "/api/py/download",
+      "destination": "/api/download.py"
+    }
+  ]
+}
