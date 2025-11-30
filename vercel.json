@@ -5,14 +5,14 @@
       "maxDuration": 60
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/py/analyze",
-      "destination": "/api/analyze.py"
+      "src": "/api/py/analyze",
+      "dest": "/api/analyze.py"
     },
     {
-      "source": "/api/py/download",
-      "destination": "/api/download.py"
+      "src": "/api/py/download",
+      "dest": "/api/download.py"
     }
   ]
 }
