@@ -32,4 +32,5 @@ export interface VideoMetadata {
 export interface AnalyzeResponse {
   metadata: VideoMetadata;
   qualities: VideoQuality[];
+  video_id?: string;
 }

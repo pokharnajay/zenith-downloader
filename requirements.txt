@@ -1,1 +1,1 @@
-yt-dlp
+# No external dependencies needed - using only Python standard library
