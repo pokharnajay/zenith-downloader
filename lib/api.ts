@@ -1,7 +1,7 @@
 import { AnalyzeResponse } from './types';
 
 export const fetchAnalysis = async (url: string): Promise<AnalyzeResponse> => {
-  const response = await fetch('/api/analyze', {
+  const response = await fetch('/api/py/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
@@ -42,7 +42,7 @@ export const getDownloadUrl = async (
   url: string,
   formatId: string
 ): Promise<DownloadUrlResponse> => {
-  const response = await fetch('/api/download', {
+  const response = await fetch('/api/py/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url, format_id: formatId }),
