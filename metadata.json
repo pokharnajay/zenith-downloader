@@ -1,0 +1,5 @@
+{
+  "name": "Zenith Downloader",
+  "description": "A minimalist, high-performance UI for video downloading operations. Features a stealth dark mode aesthetic, smooth Framer Motion animations, and Gemini-powered smart file naming.",
+  "requestFramePermissions": []
+}
