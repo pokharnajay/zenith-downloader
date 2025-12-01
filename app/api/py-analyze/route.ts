@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -12,8 +13,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
+    // Check if cookies.txt exists
+    if (!fs.existsSync('/app/cookies.txt')) {
+      console.error('[yt-dlp] cookies.txt missing at /app/cookies.txt');
+      return NextResponse.json(
+        {
+          status: 'error',
+          code: 'missing_cookies',
+          message: 'YouTube access temporarily blocked — internal authentication update required'
+        },
+        { status: 503 }
+      );
+    }
+
     // Get video metadata using yt-dlp
-    const { stdout } = await execAsync(`yt-dlp --dump-json --no-download "${url}"`);
+    const command = `yt-dlp --cookies /app/cookies.txt --no-check-certificates --dump-json --no-download "${url}"`;
+    console.log('[yt-dlp] command=', command);
+
+    let stdout: string;
+    let stderr: string;
+    let exitCode: number = 0;
+
+    try {
+      const result = await execAsync(command);
+      stdout = result.stdout;
+      stderr = result.stderr || '';
+    } catch (error: any) {
+      stdout = error.stdout || '';
+      stderr = error.stderr || '';
+      exitCode = error.code || 1;
+
+      console.log(`[yt-dlp] exit=${exitCode}`);
+
+      // Check for specific YouTube restrictions
+      if (stderr.includes('Sign in to confirm you\'re not a bot') ||
+          stderr.includes('This video is age restricted')) {
+        return NextResponse.json(
+          {
+            status: 'error',
+            code: 'youtube_restriction',
+            message: 'This video cannot be processed because YouTube requires authentication'
+          },
+          { status: 403 }
+        );
+      }
+
+      // Re-throw for generic error handling
+      throw error;
+    }
+
+    console.log(`[yt-dlp] exit=${exitCode}`);
+
     const info = JSON.parse(stdout);
 
     // Format duration

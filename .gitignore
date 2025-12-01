@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Downloads folder (local testing)
 downloads/
+
+# YouTube cookies (contains sensitive authentication data)
+cookies.txt

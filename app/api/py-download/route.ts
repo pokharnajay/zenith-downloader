@@ -96,7 +96,21 @@ export async function POST(request: NextRequest) {
 
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Starting download...' })}\n\n`));
 
+        // Check if cookies.txt exists
+        if (!fs.existsSync('/app/cookies.txt')) {
+          console.error('[yt-dlp] cookies.txt missing at /app/cookies.txt');
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+            status: 'error',
+            code: 'missing_cookies',
+            message: 'YouTube access temporarily blocked — internal authentication update required'
+          })}\n\n`));
+          safeClose();
+          return;
+        }
+
         const args = [
+          '--cookies', '/app/cookies.txt',
+          '--no-check-certificates',
           '-f', formatSpec,
           '-o', outputTemplate,
           '--newline',
@@ -113,7 +127,11 @@ export async function POST(request: NextRequest) {
 
         args.push(url);
 
+        console.log('[yt-dlp] command=yt-dlp', args.join(' '));
+
         const process = spawn('yt-dlp', args);
+
+        let stderrBuffer = '';
 
         process.stdout.on('data', (data: Buffer) => {
           const line = data.toString().trim();
@@ -158,10 +176,28 @@ export async function POST(request: NextRequest) {
         });
 
         process.stderr.on('data', (data: Buffer) => {
-          console.error('yt-dlp stderr:', data.toString());
+          const errorText = data.toString();
+          stderrBuffer += errorText;
+          console.error('[yt-dlp] stderr:', errorText);
         });
 
         process.on('close', (code) => {
+          console.log(`[yt-dlp] exit=${code}`);
+
+          // Check for YouTube restrictions even on failure
+          if (code !== 0) {
+            if (stderrBuffer.includes('Sign in to confirm you\'re not a bot') ||
+                stderrBuffer.includes('This video is age restricted')) {
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify({
+                status: 'error',
+                code: 'youtube_restriction',
+                message: 'This video cannot be processed because YouTube requires authentication'
+              })}\n\n`));
+              safeClose();
+              return;
+            }
+          }
+
           if (code === 0) {
             // Find the actual downloaded file (yt-dlp may change the extension)
             const possibleFiles = [

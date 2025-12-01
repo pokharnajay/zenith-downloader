@@ -212,11 +212,69 @@ MIT
 
 ---
 
+## YouTube Authentication (Cookies Setup)
+
+### Why Cookies Are Needed
+
+YouTube may block yt-dlp with bot detection, requiring authentication. This app uses server-side cookies to bypass these restrictions automatically for all users.
+
+### Setting Up Cookies
+
+#### Option 1: Local Development
+
+1. Install the [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) extension for Chrome
+2. Log into YouTube in your browser
+3. Click the extension icon on any YouTube page and export cookies
+4. Save the file as `cookies.txt` in the project root directory
+5. Restart the application
+
+#### Option 2: Production Deployment
+
+For production servers, follow these steps:
+
+1. **Export cookies** using the browser extension as described above
+2. **Upload to your server**:
+   ```bash
+   scp cookies.txt root@YOUR_SERVER_IP:/root/cookies.txt
+   ```
+3. **Update docker-compose.prod.yml** volume mount (if needed):
+   ```yaml
+   volumes:
+     - /root/cookies.txt:/app/cookies.txt:ro
+   ```
+4. **Restart the container**:
+   ```bash
+   docker restart zenith-downloader
+   ```
+
+**Important Notes:**
+- Cookies expire periodically and need to be refreshed
+- No Docker rebuild is required - just restart the container
+- The cookies file is NOT committed to the repository
+- Never expose cookies in logs or HTTP responses
+
+### Validating Cookies
+
+To test if cookies are working inside the Docker container:
+
+```bash
+docker exec -it zenith-downloader sh
+yt-dlp --cookies /app/cookies.txt --dump-json --no-download "https://youtube.com/watch?v=dQw4w9WgXcQ"
+```
+
+---
+
 ## Troubleshooting
+
+### "YouTube access temporarily blocked" error?
+- This means `cookies.txt` is missing or expired
+- Follow the **YouTube Authentication** section above to set up cookies
+- Check logs: `docker logs zenith-downloader` for startup warnings
 
 ### Downloads not working?
 - Ensure `yt-dlp` is installed: `yt-dlp --version`
 - Update yt-dlp: `pip install --upgrade yt-dlp`
+- Check if cookies.txt exists and is properly mounted
 
 ### AI rename not working?
 - Check if `GEMINI_API_KEY` is set in your `.env` file
