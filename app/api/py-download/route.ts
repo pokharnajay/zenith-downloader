@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
           // Best video + best audio, prefer 60fps, merge to MP4
           formatSpec = 'bestvideo[fps>=60][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
           extension = 'mp4';
-          outputTemplate = path.join(tempDir, `${fileId}.%(ext)s`);
+          outputTemplate = path.join(tempDir, `${fileId}`);
         } else if (format_id === 'audio') {
           // Best audio, extract to MP3
           formatSpec = 'bestaudio/best';
           extension = 'mp3';
-          outputTemplate = path.join(tempDir, `${fileId}.%(ext)s`);
+          outputTemplate = path.join(tempDir, `${fileId}`);
         } else {
           safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Invalid format_id' })}\n\n`));
           safeClose();
