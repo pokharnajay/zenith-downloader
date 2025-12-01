@@ -15,9 +15,9 @@ A high-performance video downloader built with Next.js. Features a beautiful dar
 
 ## Quick Start - Production Deployment
 
-### Deploy with Docker (DigitalOcean / Google Cloud / Any VPS)
+### Deploy with Docker Hub (Recommended ⭐)
 
-Deploy this app using Docker on any cloud provider:
+**Fastest way to deploy** - Pull pre-built image from Docker Hub:
 
 ```bash
 # 1. SSH into your server
@@ -26,21 +26,25 @@ ssh root@YOUR_SERVER_IP
 # 2. Install Docker & Docker Compose
 curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
 
-# 3. Clone the repo
-git clone https://github.com/YOUR_USERNAME/zenith-downloader.git
-cd zenith-downloader
+# 3. Create project directory
+mkdir -p /opt/zenith-downloader && cd /opt/zenith-downloader
 
-# 4. Create .env file
-cp .env.example .env
-nano .env  # Add your GEMINI_API_KEY
+# 4. Download production docker-compose file
+wget https://raw.githubusercontent.com/YOUR_USERNAME/zenith-downloader/main/docker-compose.prod.yml -O docker-compose.yml
 
-# 5. Start the app
-docker-compose up -d --build
+# 5. Create .env file with your API key
+echo "GEMINI_API_KEY=your_key_here" > .env
 
-# 6. Access at http://YOUR_SERVER_IP
+# 6. Pull and start
+docker pull jaypokharna/zenith-downloader:latest
+docker-compose up -d
+
+# 7. Access at http://YOUR_SERVER_IP
 ```
 
 **📖 For complete deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+**📦 For Docker Hub workflow (build, push, update), see [DOCKER_HUB_WORKFLOW.md](./DOCKER_HUB_WORKFLOW.md)**
 
 ---
 

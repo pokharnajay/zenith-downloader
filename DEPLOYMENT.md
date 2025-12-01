@@ -1,6 +1,21 @@
 # Deployment Guide - Docker Production Deployment
 
-This guide will walk you through deploying **Zenith Downloader** using Docker on any cloud provider (DigitalOcean, Google Cloud, AWS, etc.).
+This guide will walk you through deploying **Zenith Downloader** using Docker Hub on any cloud provider (DigitalOcean, Google Cloud, AWS, etc.).
+
+## Two Deployment Methods
+
+### Method 1: Docker Hub (Recommended ⭐)
+- **Fastest deployment** - Pull pre-built image in seconds
+- **Easy updates** - One command to update all servers
+- **Multi-server friendly** - Deploy on multiple clouds instantly
+- **Best for:** Multiple servers or frequent updates
+
+### Method 2: Build from Source
+- **Build on each server** - Takes 3-5 minutes
+- **No Docker Hub needed** - Everything local
+- **Best for:** Single server, infrequent updates
+
+---
 
 ## Prerequisites
 
@@ -61,48 +76,110 @@ apt install git -y
 
 ---
 
-## Step 2: Clone and Configure the Application
+## Step 2: Deploy Application
 
-### 2.1 Clone the Repository
+### 🚀 Method 1: Docker Hub Deployment (Recommended)
+
+#### 2.1 Create Project Directory
 
 ```bash
-# Navigate to your desired directory
-cd /opt
-
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/zenith-downloader.git
-cd zenith-downloader
+mkdir -p /opt/zenith-downloader
+cd /opt/zenith-downloader
 ```
 
-### 2.2 Create Environment File
+#### 2.2 Download Production Docker Compose File
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
+# Download the production docker-compose file
+wget https://raw.githubusercontent.com/YOUR_USERNAME/zenith-downloader/main/docker-compose.prod.yml -O docker-compose.yml
 
-# Edit the .env file
+# Or manually create it:
+nano docker-compose.yml
+```
+
+Paste this content:
+```yaml
+services:
+  web:
+    image: jaypokharna/zenith-downloader:latest
+    container_name: zenith-downloader
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+#### 2.3 Create Environment File
+
+```bash
 nano .env
 ```
 
 **Set your environment variables:**
 
 ```env
-# Required: Get your API key from https://makersuite.google.com/app/apikey
+# Optional: Get your API key from https://makersuite.google.com/app/apikey
 GEMINI_API_KEY=your_actual_gemini_api_key_here
-
-# Optional - these are already set by Docker
-# NODE_ENV=production
-# PORT=3000
-# HOSTNAME=0.0.0.0
 ```
 
 Save and exit (`Ctrl+X`, then `Y`, then `Enter`)
 
+#### 2.4 Pull and Start the Container
+
+```bash
+# Pull latest image from Docker Hub
+docker pull jaypokharna/zenith-downloader:latest
+
+# Start the container
+docker-compose up -d
+```
+
+This command will:
+- Pull the pre-built image from Docker Hub (takes 10-30 seconds)
+- Start the container in detached mode
+- Map port 80 on your server to the app
+
+✅ **That's it! Your app is now running!**
+
 ---
 
-## Step 3: Build and Run the Application
+### 🔧 Method 2: Build from Source (Alternative)
 
-### 3.1 Build and Start the Container
+#### 2.1 Clone the Repository
+
+```bash
+cd /opt
+git clone https://github.com/YOUR_USERNAME/zenith-downloader.git
+cd zenith-downloader
+```
+
+#### 2.2 Create Environment File
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+**Set your environment variables:**
+
+```env
+GEMINI_API_KEY=your_actual_gemini_api_key_here
+```
+
+Save and exit (`Ctrl+X`, then `Y`, then `Enter`)
+
+#### 2.3 Build and Start the Container
 
 ```bash
 docker-compose up -d --build
@@ -113,7 +190,11 @@ This command will:
 - Start the container in detached mode
 - Map port 80 on your server to the app
 
-### 3.2 Verify the Container is Running
+---
+
+## Step 3: Verify Deployment
+
+### 3.1 Verify the Container is Running
 
 ```bash
 docker-compose ps
@@ -125,7 +206,7 @@ NAME                 IMAGE                    STATUS         PORTS
 zenith-downloader    zenith-downloader-web    Up 30 seconds  0.0.0.0:80->3000/tcp
 ```
 
-### 3.3 Check Application Logs
+### 3.2 Check Application Logs
 
 ```bash
 docker-compose logs -f web
@@ -174,8 +255,18 @@ docker-compose restart
 docker-compose down
 ```
 
-### Update After Code Changes
+### Update to Latest Version
 
+**If using Docker Hub (Method 1):**
+```bash
+# Pull latest image
+docker pull jaypokharna/zenith-downloader:latest
+
+# Restart with new image
+docker-compose up -d
+```
+
+**If using Build from Source (Method 2):**
 ```bash
 # Pull latest changes
 git pull

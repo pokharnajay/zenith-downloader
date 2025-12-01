@@ -32,13 +32,12 @@ export const generateSmartFilename = async (title: string): Promise<string> => {
 
 export async function* downloadVideo(
   url: string,
-  formatId: string,
-  downloadPath: string
+  formatId: string
 ): AsyncGenerator<DownloadProgress> {
   const response = await fetch('/api/py-download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, format_id: formatId, download_path: downloadPath }),
+    body: JSON.stringify({ url, format_id: formatId }),
   });
 
   if (!response.body) throw new Error("No response body");
@@ -83,6 +82,13 @@ export async function* downloadVideo(
               currentTask: data.message
             };
           } else if (data.status === 'complete') {
+            yield {
+              percentage: 100,
+              speed: lastSpeed,
+              eta: '00:00',
+              currentTask: 'Complete',
+              fileId: data.fileId
+            };
             return;
           } else if (data.status === 'error') {
             throw new Error(data.message);

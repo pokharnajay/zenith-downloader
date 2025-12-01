@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link2, CheckCircle2, AlertCircle, RefreshCcw, Video, Music, Folder } from 'lucide-react';
+import { Link2, CheckCircle2, AlertCircle, RefreshCcw, Video, Music } from 'lucide-react';
 
 import { AppStep, VideoMetadata, DownloadProgress } from '@/lib/types';
 import { fetchAnalysis, downloadVideo } from '@/lib/api';
@@ -14,8 +14,8 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState('');
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
-  const [downloadPath, setDownloadPath] = useState<string>('');
-  const [selectedFormat, setSelectedFormat] = useState<string>('');
+  const [fileId, setFileId] = useState<string>('');
+  const [downloadedFilename, setDownloadedFilename] = useState<string>('');
 
   // Step 1: Analyze Link
   const handleAnalyze = async () => {
@@ -33,57 +33,25 @@ export default function Home() {
     }
   };
 
-  // Step 2: Format selection - ask for download location
+  // Step 2: Format selection and start download
   const handleSelectFormat = (formatId: string) => {
-    setSelectedFormat(formatId);
-    // Open folder picker (using input type="file" with webkitdirectory)
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.setAttribute('webkitdirectory', '');
-    input.setAttribute('directory', '');
-
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        // Get the directory path from the first file
-        const filePath = files[0].webkitRelativePath;
-        const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-        // In Electron or when running locally, we can get the full path
-        // For now, we'll use a manual input
-        const fullPath = (files[0] as any).path || '';
-        const folderPath = fullPath ? fullPath.substring(0, fullPath.lastIndexOf('/')) : '';
-
-        if (folderPath) {
-          setDownloadPath(folderPath);
-          startDownload(formatId, folderPath);
-        } else {
-          // Fallback: ask user to type the path
-          setStep(AppStep.SELECTION);
-          alert('Please enter the download path manually in the input field below.');
-        }
-      }
-    };
-
-    input.click();
-  };
-
-  // Alternative: manual path input
-  const handleManualDownload = () => {
-    if (!downloadPath || !selectedFormat) return;
-    startDownload(selectedFormat, downloadPath);
+    startDownload(formatId);
   };
 
   // Step 3: Download
-  const startDownload = async (formatId: string, path: string) => {
+  const startDownload = async (formatId: string) => {
     setStep(AppStep.DOWNLOADING);
     setErrorMessage('');
     setLogs([]);
     setProgress(null);
 
     try {
-      const stream = downloadVideo(url, formatId, path);
+      const stream = downloadVideo(url, formatId);
       for await (const update of stream) {
         setProgress(update);
+        if (update.fileId) {
+          setFileId(update.fileId);
+        }
         setLogs(prev => {
           const lastLog = prev[prev.length - 1];
           if (lastLog !== update.currentTask) {
@@ -93,10 +61,52 @@ export default function Home() {
         });
       }
 
+      setDownloadedFilename(metadata?.title || 'download');
       setLogs(prev => [...prev, "Download completed successfully."]);
       setStep(AppStep.COMPLETED);
     } catch (e: any) {
       setErrorMessage(e.message || 'Download failed');
+      setStep(AppStep.ERROR);
+    }
+  };
+
+  // Step 4: Handle save file
+  const handleSaveFile = async () => {
+    if (!fileId) return;
+
+    try {
+      const filename = downloadedFilename.replace(/[^a-zA-Z0-9]/g, '_');
+      const response = await fetch(`/api/retrieve-file?fileId=${fileId}&filename=${encodeURIComponent(filename)}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to retrieve file');
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      // Get filename from content-disposition header or use default
+      const contentDisposition = response.headers.get('content-disposition');
+      let downloadFilename = 'download';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          downloadFilename = filenameMatch[1];
+        }
+      }
+
+      a.download = downloadFilename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Failed to save file');
       setStep(AppStep.ERROR);
     }
   };
@@ -108,8 +118,8 @@ export default function Home() {
     setErrorMessage('');
     setProgress(null);
     setLogs([]);
-    setDownloadPath('');
-    setSelectedFormat('');
+    setFileId('');
+    setDownloadedFilename('');
   };
 
   return (
@@ -230,63 +240,37 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Download Path Input */}
-                {selectedFormat && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Download Location</label>
-                    <div className="relative group">
-                      <input
-                        type="text"
-                        value={downloadPath}
-                        onChange={(e) => setDownloadPath(e.target.value)}
-                        placeholder="/Users/yourname/Downloads"
-                        className="w-full bg-black/50 border border-zinc-800 text-zinc-100 rounded-xl px-5 py-4 pl-12 outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent transition-all placeholder:text-zinc-600 font-mono text-sm"
-                      />
-                      <Folder className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-zinc-200 transition-colors" size={20} />
-                    </div>
+                {/* Download Options */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Select Format</label>
+                  <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={handleManualDownload}
-                      disabled={!downloadPath}
-                      className="w-full bg-zinc-100 hover:bg-white text-black font-semibold h-14 rounded-xl transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleSelectFormat('video')}
+                      className="group relative bg-zinc-950/50 hover:bg-zinc-800/50 border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-4 transition-all active:scale-[0.98]"
                     >
-                      Start Download
+                      <div className="flex flex-col items-center gap-2">
+                        <Video className="text-zinc-400 group-hover:text-zinc-200 transition-colors" size={32} />
+                        <div className="text-center">
+                          <div className="text-zinc-200 font-medium text-sm">Video</div>
+                          <div className="text-zinc-500 text-xs">MP4 format</div>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleSelectFormat('audio')}
+                      className="group relative bg-zinc-950/50 hover:bg-zinc-800/50 border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-4 transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <Music className="text-zinc-400 group-hover:text-zinc-200 transition-colors" size={32} />
+                        <div className="text-center">
+                          <div className="text-zinc-200 font-medium text-sm">Audio</div>
+                          <div className="text-zinc-500 text-xs">MP3 format</div>
+                        </div>
+                      </div>
                     </button>
                   </div>
-                )}
-
-                {/* Download Options */}
-                {!selectedFormat && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Select Format</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => handleSelectFormat('video')}
-                        className="group relative bg-zinc-950/50 hover:bg-zinc-800/50 border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-4 transition-all active:scale-[0.98]"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <Video className="text-zinc-400 group-hover:text-zinc-200 transition-colors" size={32} />
-                          <div className="text-center">
-                            <div className="text-zinc-200 font-medium text-sm">Video</div>
-                            <div className="text-zinc-500 text-xs">MP4 format</div>
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleSelectFormat('audio')}
-                        className="group relative bg-zinc-950/50 hover:bg-zinc-800/50 border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-4 transition-all active:scale-[0.98]"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <Music className="text-zinc-400 group-hover:text-zinc-200 transition-colors" size={32} />
-                          <div className="text-center">
-                            <div className="text-zinc-200 font-medium text-sm">Audio</div>
-                            <div className="text-zinc-500 text-xs">MP3 format</div>
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 <button onClick={reset} className="w-full px-6 py-3 rounded-xl bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors font-medium text-sm">
                   Back
@@ -355,19 +339,32 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-2">
-                     <h2 className="text-2xl font-light text-white">Success!</h2>
+                     <h2 className="text-2xl font-light text-white">Download Complete!</h2>
                      <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                        Your file has been saved to {downloadPath}
+                        Your file is ready. Click below to save it to your device.
                      </p>
                   </div>
 
-                  <button
-                    onClick={reset}
-                    className="mt-8 px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-full transition-colors flex items-center gap-2 text-sm font-medium"
-                  >
-                    <RefreshCcw size={16} />
-                    Download Another
-                  </button>
+                  <div className="flex flex-col gap-3 w-full">
+                    <button
+                      onClick={handleSaveFile}
+                      className="w-full bg-zinc-100 hover:bg-white text-black font-semibold h-14 rounded-xl transition-transform active:scale-[0.98]"
+                    >
+                      Save File
+                    </button>
+
+                    <button
+                      onClick={reset}
+                      className="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                    >
+                      <RefreshCcw size={16} />
+                      Download Another
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-zinc-600 mt-4">
+                    File will be automatically deleted after 5 minutes if not saved
+                  </p>
                </motion.div>
             )}
 

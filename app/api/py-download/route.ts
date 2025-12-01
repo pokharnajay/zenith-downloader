@@ -1,13 +1,39 @@
 import { NextRequest } from 'next/server';
 import { spawn } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
+import { v4 as uuidv4 } from 'uuid';
+
+// Store temp file info with timestamps for cleanup
+const tempFiles = new Map<string, { filepath: string; timestamp: number }>();
+
+// Cleanup old temp files (> 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  const fiveMinutes = 5 * 60 * 1000;
+
+  tempFiles.forEach((value, key) => {
+    if (now - value.timestamp > fiveMinutes) {
+      try {
+        if (fs.existsSync(value.filepath)) {
+          fs.unlinkSync(value.filepath);
+          console.log(`Cleaned up temp file: ${value.filepath}`);
+        }
+        tempFiles.delete(key);
+      } catch (err) {
+        console.error(`Failed to cleanup temp file: ${value.filepath}`, err);
+      }
+    }
+  });
+}, 60 * 1000); // Check every minute
 
 export async function POST(request: NextRequest) {
-  const { url, format_id, download_path } = await request.json();
+  const { url, format_id } = await request.json();
 
-  if (!url || !format_id || !download_path) {
+  if (!url || !format_id) {
     return new Response(
-      `data: ${JSON.stringify({ status: 'error', message: 'URL, format_id, and download_path are required' })}\n\n`,
+      `data: ${JSON.stringify({ status: 'error', message: 'URL and format_id are required' })}\n\n`,
       { headers: { 'Content-Type': 'text/event-stream' } }
     );
   }
@@ -16,25 +42,59 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let isClosed = false;
+
+      const safeEnqueue = (data: Uint8Array) => {
+        if (!isClosed) {
+          try {
+            controller.enqueue(data);
+          } catch (err) {
+            console.error('Error enqueueing data:', err);
+            isClosed = true;
+          }
+        }
+      };
+
+      const safeClose = () => {
+        if (!isClosed) {
+          try {
+            controller.close();
+            isClosed = true;
+          } catch (err) {
+            console.error('Error closing controller:', err);
+          }
+        }
+      };
+
       try {
+        // Create temp directory and file
+        const tempDir = path.join(os.tmpdir(), 'zenith-downloads');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const fileId = uuidv4();
         let formatSpec: string;
+        let extension: string;
         let outputTemplate: string;
 
         if (format_id === 'video') {
           // Best video + best audio, prefer 60fps, merge to MP4
           formatSpec = 'bestvideo[fps>=60][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
-          outputTemplate = path.join(download_path, '%(title)s.%(ext)s');
+          extension = 'mp4';
+          outputTemplate = path.join(tempDir, `${fileId}.%(ext)s`);
         } else if (format_id === 'audio') {
           // Best audio, extract to MP3
           formatSpec = 'bestaudio/best';
-          outputTemplate = path.join(download_path, '%(title)s.%(ext)s');
+          extension = 'mp3';
+          outputTemplate = path.join(tempDir, `${fileId}.%(ext)s`);
         } else {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Invalid format_id' })}\n\n`));
-          controller.close();
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Invalid format_id' })}\n\n`));
+          safeClose();
           return;
         }
 
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Starting download...' })}\n\n`));
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Starting download...' })}\n\n`));
 
         const args = [
           '-f', formatSpec,
@@ -70,7 +130,7 @@ export async function POST(request: NextRequest) {
               const speed = speedMatch ? speedMatch[1] : '-- MiB/s';
               const eta = etaMatch ? etaMatch[1] : '--:--';
 
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                 status: 'progress',
                 percentage,
                 speed,
@@ -80,20 +140,20 @@ export async function POST(request: NextRequest) {
           }
           // Merge message
           else if (line.includes('[Merger]') || line.includes('Merging')) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Merging video and audio to MP4...' })}\n\n`));
+            safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Merging video and audio to MP4...' })}\n\n`));
           }
           // Post-processing (audio conversion)
           else if (line.includes('[ExtractAudio]') || line.includes('Extracting audio')) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Extracting audio to MP3...' })}\n\n`));
+            safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Extracting audio to MP3...' })}\n\n`));
           }
           // Destination
           else if (line.includes('[download] Destination:')) {
             const dest = line.split('Destination:')[1]?.trim() || '';
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: `Saving to: ${path.basename(dest)}` })}\n\n`));
+            safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: `Saving to: ${path.basename(dest)}` })}\n\n`));
           }
           // Already downloaded
           else if (line.includes('has already been downloaded')) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'File already exists, skipping...' })}\n\n`));
+            safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'File already exists, skipping...' })}\n\n`));
           }
         });
 
@@ -103,22 +163,44 @@ export async function POST(request: NextRequest) {
 
         process.on('close', (code) => {
           if (code === 0) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Download completed successfully!' })}\n\n`));
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'complete' })}\n\n`));
+            // Find the actual downloaded file (yt-dlp may change the extension)
+            const possibleFiles = [
+              path.join(tempDir, `${fileId}.${extension}`),
+              path.join(tempDir, `${fileId}.mp4`),
+              path.join(tempDir, `${fileId}.webm`),
+              path.join(tempDir, `${fileId}.mkv`),
+              path.join(tempDir, `${fileId}.mp3`),
+              path.join(tempDir, `${fileId}.m4a`),
+            ];
+
+            let downloadedFile = possibleFiles.find(f => fs.existsSync(f));
+
+            if (downloadedFile) {
+              // Store temp file info for cleanup
+              tempFiles.set(fileId, {
+                filepath: downloadedFile,
+                timestamp: Date.now()
+              });
+
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Download completed successfully!' })}\n\n`));
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'complete', fileId })}\n\n`));
+            } else {
+              safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Download completed but file not found' })}\n\n`));
+            }
           } else {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: `Download failed with code ${code}` })}\n\n`));
+            safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: `Download failed with code ${code}` })}\n\n`));
           }
-          controller.close();
+          safeClose();
         });
 
         process.on('error', (err) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: err.message })}\n\n`));
-          controller.close();
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: err.message })}\n\n`));
+          safeClose();
         });
 
       } catch (error: any) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: error.message })}\n\n`));
-        controller.close();
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: error.message })}\n\n`));
+        safeClose();
       }
     }
   });

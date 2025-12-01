@@ -21,6 +21,7 @@ export interface DownloadProgress {
   speed: string;
   eta: string;
   currentTask: string;
+  fileId?: string;
 }
 
 export interface VideoMetadata {
