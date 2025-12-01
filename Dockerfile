@@ -42,6 +42,9 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Create data directory for persistent storage (cookies, etc.)
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
 

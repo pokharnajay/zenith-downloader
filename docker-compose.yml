@@ -8,9 +8,9 @@ services:
     ports:
       - "80:3000"
     volumes:
-      # Mount cookies.txt from host for YouTube authentication
-      # Place your cookies.txt file in the project root or specify full path
-      - ./cookies.txt:/app/cookies.txt:ro
+      # Persistent data directory for cookies and other app data
+      # Data persists across container restarts and rebuilds
+      - zenith-data:/app/data
     env_file:
       - .env
     environment:
@@ -23,3 +23,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  zenith-data:
+    driver: local

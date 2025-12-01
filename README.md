@@ -94,6 +94,7 @@ docker-compose up -d
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `ADMIN_PASSWORD` | **Required** | Password for accessing admin panel at `/admin` for cookie management. Use a strong password! |
 | `GEMINI_API_KEY` | Optional | Google Gemini API key for AI filename generation. Get it from [Google AI Studio](https://makersuite.google.com/app/apikey) |
 | `NODE_ENV` | Auto-set | Set to `production` in Docker |
 | `PORT` | Auto-set | Server port (default: 3000) |
@@ -212,69 +213,74 @@ MIT
 
 ---
 
-## YouTube Authentication (Cookies Setup)
+## 🍪 YouTube Cookie Management (NEW!)
 
 ### Why Cookies Are Needed
 
-YouTube may block yt-dlp with bot detection, requiring authentication. This app uses server-side cookies to bypass these restrictions automatically for all users.
+YouTube may block yt-dlp with bot detection messages like "Sign in to confirm you're not a bot". This app includes a **built-in admin panel** for easy cookie management - no SSH or manual file uploads required!
 
-### Setting Up Cookies
+### 🎯 Quick Setup (3 Steps)
 
-#### Option 1: Local Development
-
-1. Install the [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) extension for Chrome
-2. Log into YouTube in your browser
-3. Click the extension icon on any YouTube page and export cookies
-4. Save the file as `cookies.txt` in the project root directory
-5. Restart the application
-
-#### Option 2: Production Deployment
-
-For production servers, follow these steps:
-
-1. **Export cookies** using the browser extension as described above
-2. **Upload to your server**:
-   ```bash
-   scp cookies.txt root@YOUR_SERVER_IP:/root/cookies.txt
-   ```
-3. **Update docker-compose.prod.yml** volume mount (if needed):
-   ```yaml
-   volumes:
-     - /root/cookies.txt:/app/cookies.txt:ro
-   ```
-4. **Restart the container**:
-   ```bash
-   docker restart zenith-downloader
-   ```
-
-**Important Notes:**
-- Cookies expire periodically and need to be refreshed
-- No Docker rebuild is required - just restart the container
-- The cookies file is NOT committed to the repository
-- Never expose cookies in logs or HTTP responses
-
-### Validating Cookies
-
-To test if cookies are working inside the Docker container:
-
+#### Step 1: Set Admin Password
+In your `.env` file:
 ```bash
-docker exec -it zenith-downloader sh
-yt-dlp --cookies /app/cookies.txt --dump-json --no-download "https://youtube.com/watch?v=dQw4w9WgXcQ"
+ADMIN_PASSWORD=your_strong_password_here
 ```
+
+#### Step 2: Export YouTube Cookies
+1. Install [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) Chrome extension
+2. Log into YouTube in your browser
+3. Visit any YouTube page and click the extension icon
+4. Export cookies - save the `cookies.txt` file
+
+#### Step 3: Upload via Admin Panel
+1. Go to `http://your-domain/admin` (or `http://localhost/admin` for local)
+2. Enter your admin password
+3. Upload the `cookies.txt` file
+4. Done! No container restart needed ✅
+
+### 📊 Admin Panel Features
+
+Access the admin panel at `/admin` to:
+- ✅ Upload cookies via web interface (drag & drop)
+- ✅ Check cookie status and age
+- ✅ Test if cookies are valid
+- ✅ View last upload timestamp
+- ✅ Delete expired cookies
+- ✅ No SSH access required!
+
+### 🔄 Cookie Lifecycle
+
+- **No cookies**: App works for most videos, fails on bot-protected ones
+- **Valid cookies**: All videos work (including age-restricted)
+- **Expired cookies**: Admin panel shows warning, re-upload needed
+- **Auto-detection**: App automatically uses cookies only when needed
+
+### 🔒 Security Notes
+
+- Admin panel is password-protected via `ADMIN_PASSWORD` env variable
+- Cookies are stored in a Docker volume (persist across restarts)
+- Cookies are never exposed via HTTP responses
+- Use HTTPS in production for additional security
 
 ---
 
 ## Troubleshooting
 
-### "YouTube access temporarily blocked" error?
-- This means `cookies.txt` is missing or expired
-- Follow the **YouTube Authentication** section above to set up cookies
-- Check logs: `docker logs zenith-downloader` for startup warnings
+### "YouTube requires authentication" error?
+- Go to `/admin` and upload fresh cookies
+- Cookies may have expired (YouTube rotates them periodically)
+- Check cookie status in admin panel
 
 ### Downloads not working?
 - Ensure `yt-dlp` is installed: `yt-dlp --version`
 - Update yt-dlp: `pip install --upgrade yt-dlp`
-- Check if cookies.txt exists and is properly mounted
+- Check cookie status at `/admin`
+
+### Can't access admin panel?
+- Ensure `ADMIN_PASSWORD` is set in `.env` file
+- Check logs: `docker logs zenith-downloader`
+- Try clearing browser cache
 
 ### AI rename not working?
 - Check if `GEMINI_API_KEY` is set in your `.env` file

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as fs from 'fs';
+import { cookiesExist, isYouTubeCookieError, COOKIES_PATH } from '@/lib/cookieManager';
 
 const execAsync = promisify(exec);
 
@@ -13,22 +13,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
-    // Check if cookies.txt exists
-    if (!fs.existsSync('/app/cookies.txt')) {
-      console.error('[yt-dlp] cookies.txt missing at /app/cookies.txt');
-      return NextResponse.json(
-        {
-          status: 'error',
-          code: 'missing_cookies',
-          message: 'YouTube access temporarily blocked — internal authentication update required'
-        },
-        { status: 503 }
-      );
-    }
+    const haveCookies = cookiesExist();
 
-    // Get video metadata using yt-dlp
-    const command = `yt-dlp --cookies /app/cookies.txt --no-check-certificates --dump-json --no-download "${url}"`;
-    console.log('[yt-dlp] command=', command);
+    // Build command - use cookies if available
+    const cookieFlag = haveCookies ? `--cookies ${COOKIES_PATH}` : '';
+    const command = `yt-dlp ${cookieFlag} --no-check-certificates --dump-json --no-download "${url}"`;
+    console.log('[yt-dlp] command=', command.replace(COOKIES_PATH, '[COOKIES]'));
 
     let stdout: string;
     let stderr: string;
@@ -45,17 +35,29 @@ export async function POST(request: NextRequest) {
 
       console.log(`[yt-dlp] exit=${exitCode}`);
 
-      // Check for specific YouTube restrictions
-      if (stderr.includes('Sign in to confirm you\'re not a bot') ||
-          stderr.includes('This video is age restricted')) {
-        return NextResponse.json(
-          {
-            status: 'error',
-            code: 'youtube_restriction',
-            message: 'This video cannot be processed because YouTube requires authentication'
-          },
-          { status: 403 }
-        );
+      const errorOutput = stderr + stdout;
+
+      // Check if this is a cookie-related error
+      if (isYouTubeCookieError(errorOutput)) {
+        if (!haveCookies) {
+          return NextResponse.json(
+            {
+              status: 'error',
+              code: 'missing_cookies',
+              message: 'YouTube requires authentication. Please contact admin to upload cookies.'
+            },
+            { status: 403 }
+          );
+        } else {
+          return NextResponse.json(
+            {
+              status: 'error',
+              code: 'invalid_cookies',
+              message: 'YouTube authentication failed. Cookies may be expired. Please contact admin.'
+            },
+            { status: 403 }
+          );
+        }
       }
 
       // Re-throw for generic error handling

@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { v4 as uuidv4 } from 'uuid';
+import { cookiesExist, isYouTubeCookieError, COOKIES_PATH } from '@/lib/cookieManager';
 
 // Store temp file info with timestamps for cleanup
 const tempFiles = new Map<string, { filepath: string; timestamp: number }>();
@@ -96,26 +97,19 @@ export async function POST(request: NextRequest) {
 
         safeEnqueue(encoder.encode(`data: ${JSON.stringify({ status: 'log', message: 'Starting download...' })}\n\n`));
 
-        // Check if cookies.txt exists
-        if (!fs.existsSync('/app/cookies.txt')) {
-          console.error('[yt-dlp] cookies.txt missing at /app/cookies.txt');
-          safeEnqueue(encoder.encode(`data: ${JSON.stringify({
-            status: 'error',
-            code: 'missing_cookies',
-            message: 'YouTube access temporarily blocked — internal authentication update required'
-          })}\n\n`));
-          safeClose();
-          return;
-        }
+        const haveCookies = cookiesExist();
 
         const args = [
-          '--cookies', '/app/cookies.txt',
-          '--no-check-certificates',
           '-f', formatSpec,
           '-o', outputTemplate,
           '--newline',
           '--no-colors',
         ];
+
+        // Add cookies if available
+        if (haveCookies) {
+          args.unshift('--no-check-certificates', '--cookies', COOKIES_PATH);
+        }
 
         // For video, merge to MP4
         if (format_id === 'video') {
@@ -184,14 +178,24 @@ export async function POST(request: NextRequest) {
         process.on('close', (code) => {
           console.log(`[yt-dlp] exit=${code}`);
 
-          // Check for YouTube restrictions even on failure
+          // Check for cookie-related errors on failure
           if (code !== 0) {
-            if (stderrBuffer.includes('Sign in to confirm you\'re not a bot') ||
-                stderrBuffer.includes('This video is age restricted')) {
+            if (isYouTubeCookieError(stderrBuffer)) {
+              let message = 'YouTube requires authentication to download this video.';
+              let errorCode = 'youtube_restriction';
+
+              if (!haveCookies) {
+                message = 'YouTube requires authentication. Please contact admin to upload cookies.';
+                errorCode = 'missing_cookies';
+              } else {
+                message = 'YouTube authentication failed. Cookies may be expired. Please contact admin.';
+                errorCode = 'invalid_cookies';
+              }
+
               safeEnqueue(encoder.encode(`data: ${JSON.stringify({
                 status: 'error',
-                code: 'youtube_restriction',
-                message: 'This video cannot be processed because YouTube requires authentication'
+                code: errorCode,
+                message
               })}\n\n`));
               safeClose();
               return;

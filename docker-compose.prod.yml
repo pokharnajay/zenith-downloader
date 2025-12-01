@@ -1,8 +1,5 @@
 # Production Docker Compose - Pulls from Docker Hub
 # Use this on your servers (DigitalOcean, Google Cloud, etc.)
-#
-# IMPORTANT: For production deployment, update the volume mount path:
-# Change './cookies.txt' to '/root/cookies.txt' or your preferred server path
 
 services:
   web:
@@ -12,9 +9,9 @@ services:
     ports:
       - "80:3000"
     volumes:
-      # Mount cookies.txt from server for YouTube authentication
-      # For production: Use absolute path like /root/cookies.txt:/app/cookies.txt:ro
-      - ./cookies.txt:/app/cookies.txt:ro
+      # Persistent data directory for cookies and other app data
+      # Data persists across container restarts and image updates
+      - zenith-data:/app/data
     env_file:
       - .env
     environment:
@@ -27,3 +24,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  zenith-data:
+    driver: local
