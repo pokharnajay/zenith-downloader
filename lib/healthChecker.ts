@@ -105,7 +105,7 @@ function executeYtdlp(args: string[], timeout: number): Promise<{
       if (timedOut) return;
 
       if (code === 0) {
-        resolve({ success: true, output });
+        resolve({ success: true, output, error: '' });
       } else {
         resolve({
           success: false,

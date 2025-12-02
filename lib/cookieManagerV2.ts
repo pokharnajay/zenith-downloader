@@ -8,6 +8,7 @@ export const DATA_DIR = isDev ? path.join(process.cwd(), '.data') : '/app/data';
 export const COOKIES_DIR = path.join(DATA_DIR, 'cookies');
 export const COOKIE_STATUS_FILE = path.join(DATA_DIR, 'cookie_status.json');
 export const TEMP_CHROMIUM_DIR = path.join(COOKIES_DIR, 'temp_chromium');
+export const TEMP_FRAGMENTS_DIR = path.join(DATA_DIR, 'temp_fragments');
 
 // Cookie status types
 export type CookieStatus = 'active' | 'blocked' | 'expired' | 'error' | 'untested';
@@ -37,12 +38,48 @@ export interface CookieStatusData {
  * Ensures all required directories exist
  */
 export function ensureDirectories(): void {
-  const dirs = [DATA_DIR, COOKIES_DIR, TEMP_CHROMIUM_DIR];
+  const dirs = [DATA_DIR, COOKIES_DIR, TEMP_CHROMIUM_DIR, TEMP_FRAGMENTS_DIR];
 
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
     }
+  }
+}
+
+/**
+ * Clean up old temporary fragment files (older than specified age)
+ */
+export function cleanupOldFragments(maxAgeMs: number = 3600000): void {
+  try {
+    if (!fs.existsSync(TEMP_FRAGMENTS_DIR)) {
+      return;
+    }
+
+    const now = Date.now();
+    const files = fs.readdirSync(TEMP_FRAGMENTS_DIR);
+
+    let cleanedCount = 0;
+    for (const file of files) {
+      const filePath = path.join(TEMP_FRAGMENTS_DIR, file);
+      try {
+        const stats = fs.statSync(filePath);
+        const age = now - stats.mtimeMs;
+
+        if (age > maxAgeMs) {
+          fs.unlinkSync(filePath);
+          cleanedCount++;
+        }
+      } catch (err) {
+        // File might have been deleted already, ignore
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`[Cleanup] Removed ${cleanedCount} old fragment files`);
+    }
+  } catch (error) {
+    console.error('[Cleanup] Error cleaning fragments:', error);
   }
 }
 

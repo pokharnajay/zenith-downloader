@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { downloadWithFallback, quickCookieCheck } from '@/lib/downloadFallback';
+import { TEMP_FRAGMENTS_DIR, cleanupOldFragments } from '@/lib/cookieManagerV2';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -51,6 +52,9 @@ export async function GET(request: NextRequest) {
   console.log(`[stream-download-v2] Starting download with fallback for: ${url}`);
   console.log(`[stream-download-v2] Format: ${format_id}, Filename: ${downloadFilename}`);
 
+  // Clean up old fragment files (older than 1 hour) before starting new download
+  cleanupOldFragments(3600000);
+
   // Build yt-dlp arguments - OPTIMIZED BASED ON FORMAT
   const args = [
     '-f',
@@ -61,6 +65,8 @@ export async function GET(request: NextRequest) {
     '--no-warnings',
     '--quiet',
     '--no-part',
+    '--paths',
+    `temp:${TEMP_FRAGMENTS_DIR}`, // Store temp fragments in proper directory
     '--no-check-certificates',
     '--no-call-home', // Skip update checks
     '--extractor-retries',

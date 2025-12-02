@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
   Trash2,
@@ -292,11 +291,7 @@ export default function AdminPanel() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
+        <div className="w-full max-w-md">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-8 shadow-2xl">
             <h1 className="text-3xl font-bold text-white mb-2 text-center">Admin Panel</h1>
             <p className="text-zinc-400 text-sm text-center mb-8">
@@ -328,13 +323,9 @@ export default function AdminPanel() {
               </div>
 
               {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm"
-                >
+                <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm">
                   {error}
-                </motion.div>
+                </div>
               )}
 
               <button
@@ -346,7 +337,7 @@ export default function AdminPanel() {
               </button>
             </form>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -452,9 +443,7 @@ export default function AdminPanel() {
             </button>
 
             {uploadMessage && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+              <div
                 className={`p-3 rounded-lg ${
                   uploadMessage.startsWith('✓')
                     ? 'bg-green-500/10 border border-green-500/50 text-green-400'
@@ -462,7 +451,7 @@ export default function AdminPanel() {
                 }`}
               >
                 {uploadMessage}
-              </motion.div>
+              </div>
             )}
           </div>
         </div>
@@ -512,10 +501,8 @@ export default function AdminPanel() {
 
           <div className="space-y-3">
             {cookieData?.cookies.map((cookie) => (
-              <motion.div
+              <div
                 key={cookie.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
                 className={`bg-zinc-900 border ${
                   cookie.id === cookieData.currentCookieId
                     ? 'border-blue-500/50 bg-blue-500/5'
@@ -552,32 +539,25 @@ export default function AdminPanel() {
                     </div>
 
                     {/* Expanded details */}
-                    <AnimatePresence>
-                      {expandedCookie === cookie.id && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="mt-3 pt-3 border-t border-zinc-800 text-sm text-zinc-400 space-y-1"
-                        >
+                    {expandedCookie === cookie.id && (
+                      <div className="mt-3 pt-3 border-t border-zinc-800 text-sm text-zinc-400 space-y-1">
+                        <div>
+                          <span className="text-zinc-500">ID:</span> {cookie.id}
+                        </div>
+                        {cookie.lastChecked && (
                           <div>
-                            <span className="text-zinc-500">ID:</span> {cookie.id}
+                            <span className="text-zinc-500">Last Checked:</span>{' '}
+                            {new Date(cookie.lastChecked).toLocaleString()}
                           </div>
-                          {cookie.lastChecked && (
-                            <div>
-                              <span className="text-zinc-500">Last Checked:</span>{' '}
-                              {new Date(cookie.lastChecked).toLocaleString()}
-                            </div>
-                          )}
-                          {cookie.lastError && (
-                            <div>
-                              <span className="text-zinc-500">Last Error:</span>{' '}
-                              <span className="text-red-400">{cookie.lastError}</span>
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        )}
+                        {cookie.lastError && (
+                          <div>
+                            <span className="text-zinc-500">Last Error:</span>{' '}
+                            <span className="text-red-400">{cookie.lastError}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -616,7 +596,7 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

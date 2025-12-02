@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import { quickCookieCheck } from '@/lib/downloadFallback';
-import { getCurrentCookie } from '@/lib/cookieManagerV2';
+import { getCurrentCookie, TEMP_FRAGMENTS_DIR } from '@/lib/cookieManagerV2';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
       '--no-playlist',
       '--no-warnings',
       '--skip-download',
+      '--paths',
+      `temp:${TEMP_FRAGMENTS_DIR}`, // Store temp files in proper directory
     ];
 
     if (current.filepath) {
