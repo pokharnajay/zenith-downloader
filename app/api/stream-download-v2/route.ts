@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
     extension = 'mp4';
     contentType = 'video/mp4';
   } else if (format_id === 'audio') {
-    formatSpec = 'bestaudio[ext=m4a]/bestaudio';
+    // More flexible audio format spec with fallbacks
+    formatSpec = 'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio';
     extension = 'm4a';
     contentType = 'audio/mp4';
   } else {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
   console.log(`[stream-download-v2] Starting download with fallback for: ${url}`);
   console.log(`[stream-download-v2] Format: ${format_id}, Filename: ${downloadFilename}`);
 
-  // Build yt-dlp arguments - MAXIMUM SPEED OPTIMIZED
+  // Build yt-dlp arguments - OPTIMIZED BASED ON FORMAT
   const args = [
     '-f',
     formatSpec,
@@ -60,12 +61,6 @@ export async function GET(request: NextRequest) {
     '--no-warnings',
     '--quiet',
     '--no-part',
-    '--buffer-size',
-    '4K', // Smaller buffer = faster start
-    '--http-chunk-size',
-    '5M', // Smaller chunks = more parallel connections
-    '--concurrent-fragments',
-    '16', // Maximum parallelism (was 5, now 16)
     '--no-check-certificates',
     '--no-call-home', // Skip update checks
     '--extractor-retries',
@@ -75,9 +70,21 @@ export async function GET(request: NextRequest) {
     '--skip-unavailable-fragments',
   ];
 
-  // For video, merge streams
+  // Video-specific optimizations
   if (format_id === 'video') {
-    args.push('--merge-output-format', 'mp4');
+    args.push(
+      '--buffer-size', '4K', // Smaller buffer = faster start
+      '--http-chunk-size', '5M', // Smaller chunks = more parallel connections
+      '--concurrent-fragments', '16', // Maximum parallelism for video
+      '--merge-output-format', 'mp4'
+    );
+  } else {
+    // Audio-specific optimizations (fewer concurrent fragments for stability)
+    args.push(
+      '--buffer-size', '4K',
+      '--http-chunk-size', '2M', // Smaller chunks for audio
+      '--concurrent-fragments', '8' // Less parallelism for audio to avoid issues
+    );
   }
 
   args.push(url);
