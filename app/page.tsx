@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link2, CheckCircle2, AlertCircle, RefreshCcw, Video, Music } from 'lucide-react';
+import { Link2, CheckCircle2, AlertCircle, RefreshCcw, Video, Music, Youtube, Instagram } from 'lucide-react';
 
 import { AppStep, VideoMetadata, DownloadProgress } from '@/lib/types';
 import { fetchAnalysis, downloadVideo } from '@/lib/api';
 
 export default function Home() {
+  const [platform, setPlatform] = useState<'youtube' | 'instagram' | null>('youtube'); // Default to YouTube
   const [step, setStep] = useState<AppStep>(AppStep.IDLE);
   const [url, setUrl] = useState('');
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
@@ -33,82 +34,32 @@ export default function Home() {
     }
   };
 
-  // Step 2: Format selection and start download
+  // Step 2: Format selection and start download DIRECTLY
   const handleSelectFormat = (formatId: string) => {
-    startDownload(formatId);
+    // Trigger immediate download via direct stream URL
+    const filename = (metadata?.title || 'download').replace(/[^a-zA-Z0-9\s]/g, '_');
+    const downloadUrl = `/api/stream-download?url=${encodeURIComponent(url)}&format_id=${formatId}&filename=${encodeURIComponent(filename)}`;
+
+    // Create hidden link and click it to trigger browser download
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Show completion message
+    setStep(AppStep.COMPLETED);
+    setDownloadedFilename(filename);
   };
 
-  // Step 3: Download
+  // Legacy functions kept for compatibility but not used
   const startDownload = async (formatId: string) => {
-    setStep(AppStep.DOWNLOADING);
-    setErrorMessage('');
-    setLogs([]);
-    setProgress(null);
-
-    try {
-      const stream = downloadVideo(url, formatId);
-      for await (const update of stream) {
-        setProgress(update);
-        if (update.fileId) {
-          setFileId(update.fileId);
-        }
-        setLogs(prev => {
-          const lastLog = prev[prev.length - 1];
-          if (lastLog !== update.currentTask) {
-            return [...prev, update.currentTask];
-          }
-          return prev;
-        });
-      }
-
-      setDownloadedFilename(metadata?.title || 'download');
-      setLogs(prev => [...prev, "Download completed successfully."]);
-      setStep(AppStep.COMPLETED);
-    } catch (e: any) {
-      setErrorMessage(e.message || 'Download failed');
-      setStep(AppStep.ERROR);
-    }
+    // Not used anymore - direct download via handleSelectFormat
   };
 
-  // Step 4: Handle save file
   const handleSaveFile = async () => {
-    if (!fileId) return;
-
-    try {
-      const filename = downloadedFilename.replace(/[^a-zA-Z0-9]/g, '_');
-      const response = await fetch(`/api/retrieve-file?fileId=${fileId}&filename=${encodeURIComponent(filename)}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to retrieve file');
-      }
-
-      // Get the blob from response
-      const blob = await response.blob();
-
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-
-      // Get filename from content-disposition header or use default
-      const contentDisposition = response.headers.get('content-disposition');
-      let downloadFilename = 'download';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-        if (filenameMatch) {
-          downloadFilename = filenameMatch[1];
-        }
-      }
-
-      a.download = downloadFilename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (e: any) {
-      setErrorMessage(e.message || 'Failed to save file');
-      setStep(AppStep.ERROR);
-    }
+    // Not used anymore - download happens automatically
   };
 
   const reset = () => {
@@ -174,28 +125,106 @@ export default function Home() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Video Link</label>
-                  <div className="relative group">
-                    <input
-                      type="text"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                      placeholder="Paste your link here..."
-                      className="w-full bg-black/50 border border-zinc-800 text-zinc-100 rounded-xl px-5 py-4 pl-12 outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent transition-all placeholder:text-zinc-600 font-mono text-sm"
-                    />
-                    <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-zinc-200 transition-colors" size={20} />
+                {/* Platform Selector */}
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Choose Platform</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setPlatform('youtube')}
+                      className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
+                        platform === 'youtube'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Youtube size={20} />
+                      YouTube
+                    </button>
+                    <button
+                      onClick={() => setPlatform('instagram')}
+                      className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
+                        platform === 'instagram'
+                          ? 'text-white'
+                          : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                      }`}
+                      style={platform === 'instagram' ? {
+                        backgroundImage: 'linear-gradient(90deg, #515BD4, #8134AF, #DD2A7B, #FEDA77, #F58529)'
+                      } : {}}
+                    >
+                      <Instagram size={20} />
+                      Instagram
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  onClick={handleAnalyze}
-                  disabled={!url}
-                  className="w-full bg-zinc-100 hover:bg-white text-black font-semibold h-14 rounded-xl transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  Analyze Video
-                </button>
+                {/* URL Input - Only for YouTube */}
+                {platform === 'youtube' && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Video Link</label>
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          value={url}
+                          onChange={(e) => setUrl(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                          placeholder="Paste YouTube link here..."
+                          className="w-full bg-black/50 border border-zinc-800 text-zinc-100 rounded-xl px-5 py-4 pl-12 outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent transition-all placeholder:text-zinc-600 font-mono text-sm"
+                        />
+                        <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-zinc-200 transition-colors" size={20} />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleAnalyze}
+                      disabled={!url}
+                      className="w-full bg-zinc-100 hover:bg-white text-black font-semibold h-14 rounded-xl transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      Analyze Video
+                    </button>
+                  </>
+                )}
+
+                {/* Instagram Coming Soon */}
+                {platform === 'instagram' && (
+                  <>
+                    <div className="space-y-2">
+                      <label
+                        className="text-xs font-semibold uppercase tracking-wider ml-1 bg-clip-text text-transparent"
+                        style={{
+                          backgroundImage: 'linear-gradient(90deg, #515BD4, #8134AF, #DD2A7B, #FEDA77, #F58529)'
+                        }}
+                      >
+                        Instagram Link
+                      </label>
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          disabled
+                          placeholder="Coming Soon..."
+                          className="w-full bg-black/50 text-[#FEDA77] rounded-xl px-5 py-4 pl-12 outline-none cursor-not-allowed font-mono text-sm"
+                          style={{
+                            border: '2px solid transparent',
+                            backgroundImage: 'linear-gradient(#000, #000), linear-gradient(90deg, #515BD4, #8134AF, #DD2A7B, #FEDA77, #F58529)',
+                            backgroundOrigin: 'border-box',
+                            backgroundClip: 'padding-box, border-box'
+                          }}
+                        />
+                        <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-[#DD2A7B]" size={20} />
+                      </div>
+                    </div>
+
+                    <button
+                      disabled
+                      className="w-full opacity-50 cursor-not-allowed text-white font-semibold h-14 rounded-xl flex items-center justify-center gap-2"
+                      style={{
+                        backgroundImage: 'linear-gradient(90deg, #515BD4, #8134AF, #DD2A7B, #FEDA77, #F58529)'
+                      }}
+                    >
+                      Coming Soon 🎉
+                    </button>
+                  </>
+                )}
               </motion.div>
             )}
 
@@ -278,53 +307,7 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* 4. DOWNLOADING STEP */}
-            {step === AppStep.DOWNLOADING && (
-              <motion.div
-                key="downloading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-6"
-              >
-                <div className="text-center space-y-2">
-                  <h3 className="text-zinc-200 font-medium">Downloading...</h3>
-                  <p className="text-xs text-zinc-500 font-mono">{progress?.currentTask || 'Preparing'}</p>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="relative h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="absolute inset-y-0 left-0 bg-white"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress?.percentage || 0}%` }}
-                    transition={{ type: "spring", stiffness: 50 }}
-                  />
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/50 text-center">
-                    <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Speed</div>
-                    <div className="text-zinc-200 font-mono">{progress?.speed || '--'}</div>
-                  </div>
-                  <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/50 text-center">
-                    <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">ETA</div>
-                    <div className="text-zinc-200 font-mono">{progress?.eta || '--'}</div>
-                  </div>
-                </div>
-
-                {/* Terminal Logs */}
-                <div className="bg-black/50 rounded-xl p-4 border border-zinc-800/50 max-h-32 overflow-y-auto">
-                  <div className="space-y-1 font-mono text-xs">
-                    {logs.map((log, i) => (
-                      <div key={i} className="text-zinc-400">
-                        <span className="text-zinc-600">→</span> {log}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
+            {/* 4. DOWNLOADING STEP - Not used with new direct streaming */}
 
             {/* 5. COMPLETED STEP */}
             {step === AppStep.COMPLETED && (
@@ -339,34 +322,23 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-2">
-                     <h2 className="text-2xl font-light text-white">Download Complete!</h2>
+                     <h2 className="text-2xl font-light text-white">Download Started!</h2>
                      <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                        Your file is ready. Click below to save it to your device.
+                        Your browser should start downloading the file automatically. Check your downloads folder!
                      </p>
                   </div>
 
                   <div className="flex flex-col gap-3 w-full">
                     <button
-                      onClick={handleSaveFile}
-                      className="w-full bg-zinc-100 hover:bg-white text-black font-semibold h-14 rounded-xl transition-transform active:scale-[0.98]"
-                    >
-                      Save File
-                    </button>
-
-                    <button
                       onClick={reset}
-                      className="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                      className="px-6 py-3 rounded-xl bg-white text-black hover:bg-zinc-100 transition-colors font-medium text-sm"
                     >
-                      <RefreshCcw size={16} />
-                      Download Another
+                      Download Another Video
                     </button>
                   </div>
-
-                  <p className="text-xs text-zinc-600 mt-4">
-                    File will be automatically deleted after 5 minutes if not saved
-                  </p>
                </motion.div>
             )}
+
 
              {/* ERROR STATE */}
              {step === AppStep.ERROR && (

@@ -26,11 +26,12 @@ export async function GET(request: NextRequest) {
   const filepath = possibleFiles.find(f => fs.existsSync(f));
 
   if (!filepath || !fs.existsSync(filepath)) {
+    console.error(`[retrieve-file] File not found. Tried: ${possibleFiles.join(', ')}`);
     return new Response('File not found or expired', { status: 404 });
   }
 
   try {
-    const fileBuffer = fs.readFileSync(filepath);
+    const stat = fs.statSync(filepath);
     const ext = path.extname(filepath);
 
     // Determine content type
@@ -45,15 +46,44 @@ export async function GET(request: NextRequest) {
     const contentType = contentTypeMap[ext] || 'application/octet-stream';
     const downloadFilename = `${filename}${ext}`;
 
-    return new Response(fileBuffer, {
+    console.log(`[retrieve-file] Streaming file: ${filepath} (${(stat.size / 1024 / 1024).toFixed(2)} MB)`);
+
+    // Stream the file instead of loading it all into memory
+    const readStream = fs.createReadStream(filepath);
+
+    // Convert Node.js stream to Web ReadableStream
+    const stream = new ReadableStream({
+      start(controller) {
+        readStream.on('data', (chunk: string | Buffer) => {
+          const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          controller.enqueue(new Uint8Array(buffer));
+        });
+
+        readStream.on('end', () => {
+          controller.close();
+          console.log(`[retrieve-file] Completed streaming: ${filepath}`);
+        });
+
+        readStream.on('error', (error) => {
+          console.error('[retrieve-file] Stream error:', error);
+          controller.error(error);
+        });
+      },
+      cancel() {
+        readStream.destroy();
+      }
+    });
+
+    return new Response(stream, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${downloadFilename}"`,
-        'Content-Length': fileBuffer.length.toString(),
+        'Content-Length': stat.size.toString(),
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
-    console.error('Error reading file:', error);
+    console.error('[retrieve-file] Error:', error);
     return new Response('Error retrieving file', { status: 500 });
   }
 }
