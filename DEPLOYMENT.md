@@ -30,7 +30,7 @@ ssh your-user@your-server
 cd /path/to/project
 
 # Pull latest image
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # Restart containers with new image
 docker-compose -f docker-compose.prod.yml down
@@ -74,7 +74,7 @@ Press `Ctrl+C` to exit logs.
 
 ### 1. Check Container Status
 ```bash
-docker ps  # Should show zenith-downloader running
+docker ps  # Should show Youtube-downloader running
 ```
 
 ### 2. Check Logs
@@ -115,8 +115,8 @@ If you don't have `docker-compose.prod.yml` on your server, create it:
 ```yaml
 services:
   app:
-    image: jaypokharna/zenith-downloader:latest
-    container_name: zenith-downloader
+    image: jaypokharna/Youtube-downloader:latest
+    container_name: Youtube-downloader
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -127,7 +127,7 @@ services:
       - PORT=3000
       - HOSTNAME=0.0.0.0
     volumes:
-      - zenith-data:/app/data  # Persistent cookie storage
+      - Youtube-data:/app/data  # Persistent cookie storage
     deploy:
       resources:
         limits:
@@ -142,7 +142,7 @@ services:
       start_period: 40s
 
 volumes:
-  zenith-data:
+  Youtube-data:
     driver: local
 ```
 
@@ -161,7 +161,7 @@ When you make code changes or want to update:
 ### Production Server
 ```bash
 # Pull latest image
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # Restart with new image
 docker-compose -f docker-compose.prod.yml down
@@ -293,9 +293,9 @@ dpkg -i cloudflared-linux-amd64.deb
 
 # Authenticate and create tunnel
 cloudflared tunnel login
-cloudflared tunnel create zenith
-cloudflared tunnel route dns zenith your-domain.com
-cloudflared tunnel run zenith --url http://localhost:3000
+cloudflared tunnel create Youtube
+cloudflared tunnel route dns Youtube your-domain.com
+cloudflared tunnel run Youtube --url http://localhost:3000
 ```
 
 ### 4. Disable Root SSH
@@ -341,7 +341,7 @@ On a 1GB RAM VPS:
 ./build-and-push.sh
 
 # Update server
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose down && docker-compose up -d
 
 # View logs
@@ -379,7 +379,7 @@ After deployment:
 
 ## 🎉 You're Done!
 
-Your Zenith Downloader is now live with:
+Your Youtube Downloader is now live with:
 
 - ✅ **30x faster downloads** (instant start)
 - ✅ **10x faster builds** (optimized Docker)

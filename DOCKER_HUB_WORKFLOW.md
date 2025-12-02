@@ -1,6 +1,6 @@
 # Docker Hub Workflow Guide
 
-This guide explains how to build, push, and deploy your Zenith Downloader using Docker Hub.
+This guide explains how to build, push, and deploy your Youtube Downloader using Docker Hub.
 
 ---
 
@@ -44,19 +44,19 @@ This script will:
 
 ```bash
 # Build the image
-docker build -t jaypokharna/zenith-downloader:latest .
+docker build -t jaypokharna/Youtube-downloader:latest .
 
 # Login to Docker Hub
 docker login
 
 # Push to Docker Hub
-docker push jaypokharna/zenith-downloader:latest
+docker push jaypokharna/Youtube-downloader:latest
 ```
 
 ### Step 3: Verify on Docker Hub
 
 1. Go to https://hub.docker.com/
-2. Click on your repository: `jaypokharna/zenith-downloader`
+2. Click on your repository: `jaypokharna/Youtube-downloader`
 3. You should see the new image with the `latest` tag
 
 ---
@@ -69,8 +69,8 @@ SSH into your server and follow these steps:
 
 ```bash
 # 1. Create project directory
-mkdir -p /opt/zenith-downloader
-cd /opt/zenith-downloader
+mkdir -p /opt/Youtube-downloader
+cd /opt/Youtube-downloader
 
 # 2. Create docker-compose.yml
 nano docker-compose.yml
@@ -80,8 +80,8 @@ Paste this content:
 ```yaml
 services:
   web:
-    image: jaypokharna/zenith-downloader:latest
-    container_name: zenith-downloader
+    image: jaypokharna/Youtube-downloader:latest
+    container_name: Youtube-downloader
     restart: unless-stopped
     ports:
       - "80:3000"
@@ -115,7 +115,7 @@ Save and exit.
 
 ```bash
 # 4. Pull and start the container
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 
 # 5. Verify it's running
@@ -132,10 +132,10 @@ When you push a new image to Docker Hub, update your servers:
 ssh root@YOUR_SERVER_IP
 
 # Navigate to project directory
-cd /opt/zenith-downloader
+cd /opt/Youtube-downloader
 
 # Pull latest image
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # Recreate container with new image
 docker-compose up -d
@@ -164,8 +164,8 @@ docker-compose logs -f
 **Step 2: Server 1 (DigitalOcean)**
 ```bash
 ssh root@digitalocean-ip
-cd /opt/zenith-downloader
-docker pull jaypokharna/zenith-downloader:latest
+cd /opt/Youtube-downloader
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 exit
 ```
@@ -173,8 +173,8 @@ exit
 **Step 3: Server 2 (Google Cloud)**
 ```bash
 ssh root@google-cloud-ip
-cd /opt/zenith-downloader
-docker pull jaypokharna/zenith-downloader:latest
+cd /opt/Youtube-downloader
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 exit
 ```
@@ -182,8 +182,8 @@ exit
 **Step 4: Server N (Any other server)**
 ```bash
 ssh root@server-n-ip
-cd /opt/zenith-downloader
-docker pull jaypokharna/zenith-downloader:latest
+cd /opt/Youtube-downloader
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 exit
 ```
@@ -200,10 +200,10 @@ npm install
 npm run dev
 
 # Build Docker image locally
-docker build -t zenith-downloader-local .
+docker build -t Youtube-downloader-local .
 
 # Run locally with Docker
-docker run -p 3000:3000 -e GEMINI_API_KEY=your_key zenith-downloader-local
+docker run -p 3000:3000 -e GEMINI_API_KEY=your_key Youtube-downloader-local
 ```
 
 ### Docker Hub Operations
@@ -213,27 +213,27 @@ docker run -p 3000:3000 -e GEMINI_API_KEY=your_key zenith-downloader-local
 docker login
 
 # Build and tag image
-docker build -t jaypokharna/zenith-downloader:latest .
+docker build -t jaypokharna/Youtube-downloader:latest .
 
 # Push to Docker Hub
-docker push jaypokharna/zenith-downloader:latest
+docker push jaypokharna/Youtube-downloader:latest
 
 # Tag with specific version
-docker tag jaypokharna/zenith-downloader:latest jaypokharna/zenith-downloader:v1.0.0
-docker push jaypokharna/zenith-downloader:v1.0.0
+docker tag jaypokharna/Youtube-downloader:latest jaypokharna/Youtube-downloader:v1.0.0
+docker push jaypokharna/Youtube-downloader:v1.0.0
 
 # Pull from Docker Hub
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # View local images
-docker images | grep zenith
+docker images | grep Youtube
 ```
 
 ### Server Operations
 
 ```bash
 # Pull latest image
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # Start/restart container
 docker-compose up -d
@@ -248,7 +248,7 @@ docker-compose logs -f
 docker-compose ps
 
 # Execute command in container
-docker exec -it zenith-downloader sh
+docker exec -it Youtube-downloader sh
 
 # Remove old images
 docker image prune -a
@@ -264,8 +264,8 @@ The `build-and-push.sh` script automatically tags each build with a timestamp:
 
 ```bash
 ./build-and-push.sh
-# Creates: jaypokharna/zenith-downloader:latest
-# And: jaypokharna/zenith-downloader:20241201-143022
+# Creates: jaypokharna/Youtube-downloader:latest
+# And: jaypokharna/Youtube-downloader:20241201-143022
 ```
 
 ### Using Semantic Versioning (Manual)
@@ -274,18 +274,18 @@ For production releases, use semantic versioning:
 
 ```bash
 # Build and tag with version
-docker build -t jaypokharna/zenith-downloader:v1.0.0 .
-docker tag jaypokharna/zenith-downloader:v1.0.0 jaypokharna/zenith-downloader:latest
+docker build -t jaypokharna/Youtube-downloader:v1.0.0 .
+docker tag jaypokharna/Youtube-downloader:v1.0.0 jaypokharna/Youtube-downloader:latest
 
 # Push both tags
-docker push jaypokharna/zenith-downloader:v1.0.0
-docker push jaypokharna/zenith-downloader:latest
+docker push jaypokharna/Youtube-downloader:v1.0.0
+docker push jaypokharna/Youtube-downloader:latest
 ```
 
 Deploy specific version on server:
 ```bash
 # Edit docker-compose.yml
-image: jaypokharna/zenith-downloader:v1.0.0  # Instead of :latest
+image: jaypokharna/Youtube-downloader:v1.0.0  # Instead of :latest
 ```
 
 ### Rollback to Previous Version
@@ -294,14 +294,14 @@ If something breaks, rollback:
 
 ```bash
 # On server
-cd /opt/zenith-downloader
+cd /opt/Youtube-downloader
 
 # Check available versions on Docker Hub
-docker pull jaypokharna/zenith-downloader:20241201-120000
+docker pull jaypokharna/Youtube-downloader:20241201-120000
 
 # Edit docker-compose.yml to use older version
 nano docker-compose.yml
-# Change: image: jaypokharna/zenith-downloader:20241201-120000
+# Change: image: jaypokharna/Youtube-downloader:20241201-120000
 
 # Restart
 docker-compose up -d
@@ -344,19 +344,19 @@ ping hub.docker.com
 curl https://status.docker.com/
 
 # Try manual pull
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 ```
 
 ### Image Not Updating
 
 ```bash
 # Force pull latest
-docker pull jaypokharna/zenith-downloader:latest --no-cache
+docker pull jaypokharna/Youtube-downloader:latest --no-cache
 
 # Remove old container and image
 docker-compose down
-docker rmi jaypokharna/zenith-downloader:latest
-docker pull jaypokharna/zenith-downloader:latest
+docker rmi jaypokharna/Youtube-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 ```
 
@@ -387,8 +387,8 @@ docker-compose up -d
 6. **Backup before major updates**
    ```bash
    # Backup current image
-   docker tag jaypokharna/zenith-downloader:latest jaypokharna/zenith-downloader:backup-$(date +%Y%m%d)
-   docker push jaypokharna/zenith-downloader:backup-$(date +%Y%m%d)
+   docker tag jaypokharna/Youtube-downloader:latest jaypokharna/Youtube-downloader:backup-$(date +%Y%m%d)
+   docker push jaypokharna/Youtube-downloader:backup-$(date +%Y%m%d)
    ```
 
 ---

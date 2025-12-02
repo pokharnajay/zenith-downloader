@@ -31,8 +31,22 @@ WORKDIR /app
 # Install runtime dependencies (yt-dlp, ffmpeg, wget for healthcheck)
 RUN apk add --no-cache yt-dlp ffmpeg wget
 
+# Install Chromium and dependencies for Puppeteer (fallback bot detection)
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto-emoji
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Puppeteer configuration
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs

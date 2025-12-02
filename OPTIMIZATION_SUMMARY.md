@@ -85,7 +85,7 @@ ssh user@your-server
 cd /path/to/your/project
 
 # Pull latest image
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # Restart containers with new image
 docker-compose -f docker-compose.prod.yml down
@@ -198,7 +198,7 @@ If you want to push performance even further:
 
 ## 🎉 Summary
 
-Your Zenith Downloader is now a **high-performance, production-ready application** with:
+Your Youtube Downloader is now a **high-performance, production-ready application** with:
 
 1. **30x faster download starts** (instant browser dialog)
 2. **10x faster Docker builds** (thanks to `.dockerignore`)

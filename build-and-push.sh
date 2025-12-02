@@ -2,7 +2,7 @@
 
 # Docker Hub Configuration
 DOCKER_USERNAME="jaypokharna"
-IMAGE_NAME="zenith-downloader"
+IMAGE_NAME="Youtube-downloader"
 VERSION="latest"
 
 # Platform configuration - supports linux/amd64 (x86_64) and linux/arm64

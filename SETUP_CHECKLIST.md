@@ -32,10 +32,10 @@ Follow this checklist to get your app deployed using Docker Hub.
 ### 1. Test Local Build (Optional but Recommended)
 ```bash
 # Navigate to project directory
-cd "/Users/jaypokharna/Desktop/Shared Folder/Shared Folder/zenith-downloader (1)"
+cd "/Users/jaypokharna/Desktop/Shared Folder/Shared Folder/Youtube-downloader (1)"
 
 # Test build locally
-docker build -t zenith-downloader-test .
+docker build -t Youtube-downloader-test .
 
 # If build succeeds, you're good to go!
 ```
@@ -49,11 +49,11 @@ docker build -t zenith-downloader-test .
 **What happens:**
 - ✅ Builds Docker image with all your code
 - ✅ Tags with `latest` and timestamp
-- ✅ Pushes to Docker Hub (jaypokharna/zenith-downloader)
+- ✅ Pushes to Docker Hub (jaypokharna/Youtube-downloader)
 - ✅ Available for deployment worldwide!
 
 ### 3. Verify on Docker Hub
-- [ ] Go to https://hub.docker.com/r/jaypokharna/zenith-downloader
+- [ ] Go to https://hub.docker.com/r/jaypokharna/Youtube-downloader
 - [ ] Check that the image is there with `latest` tag
 - [ ] Note the size and timestamp
 
@@ -86,8 +86,8 @@ docker --version
 
 ### 4. Create Project Directory
 ```bash
-mkdir -p /opt/zenith-downloader
-cd /opt/zenith-downloader
+mkdir -p /opt/Youtube-downloader
+cd /opt/Youtube-downloader
 ```
 
 ### 5. Create docker-compose.yml
@@ -99,8 +99,8 @@ Paste this:
 ```yaml
 services:
   web:
-    image: jaypokharna/zenith-downloader:latest
-    container_name: zenith-downloader
+    image: jaypokharna/Youtube-downloader:latest
+    container_name: Youtube-downloader
     restart: unless-stopped
     ports:
       - "80:3000"
@@ -135,7 +135,7 @@ Save: `Ctrl+X`, `Y`, `Enter`
 ### 7. Pull and Start
 ```bash
 # Pull image from Docker Hub
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 
 # Start container
 docker-compose up -d
@@ -171,8 +171,8 @@ docker-compose logs -f
 ssh root@YOUR_SERVER_IP
 
 # Update to latest version
-cd /opt/zenith-downloader
-docker pull jaypokharna/zenith-downloader:latest
+cd /opt/Youtube-downloader
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 
 # Verify
@@ -194,13 +194,13 @@ docker-compose logs -f
 npm run dev
 
 # Check Docker images
-docker images | grep zenith
+docker images | grep Youtube
 ```
 
 ### Server Commands
 ```bash
 # Update to latest
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 
 # View logs
@@ -255,7 +255,7 @@ docker info
 docker system prune -a
 
 # Rebuild from scratch
-docker build --no-cache -t jaypokharna/zenith-downloader:latest .
+docker build --no-cache -t jaypokharna/Youtube-downloader:latest .
 ```
 
 ### Can't login to Docker Hub?
@@ -271,7 +271,7 @@ docker login
 ping hub.docker.com
 
 # Try manual pull
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 ```
 
 ---

@@ -1,6 +1,6 @@
 # 🍪 Cookie Management Guide
 
-This guide explains how to manage YouTube cookies for Zenith Downloader using the built-in admin panel.
+This guide explains how to manage YouTube cookies for Youtube Downloader using the built-in admin panel.
 
 ## Table of Contents
 - [Why Cookies Are Needed](#why-cookies-are-needed)
@@ -138,7 +138,7 @@ Remove cookies if:
 **Solution:**
 - Try again (might be network issue)
 - Check server internet connection
-- Check yt-dlp is installed: `docker exec zenith-downloader yt-dlp --version`
+- Check yt-dlp is installed: `docker exec Youtube-downloader yt-dlp --version`
 
 ### Downloads Still Failing
 
@@ -199,7 +199,7 @@ For production deployments:
 
 ### Storage
 
-- Cookies stored in Docker volume: `zenith-data`
+- Cookies stored in Docker volume: `Youtube-data`
 - Path inside container: `/app/data/cookies.txt`
 - Persists across restarts and rebuilds
 - Proper file permissions (nextjs user can read/write)
@@ -231,22 +231,22 @@ If you need to manage cookies via command line:
 
 **Check if cookies exist:**
 ```bash
-docker exec zenith-downloader ls -lh /app/data/cookies.txt
+docker exec Youtube-downloader ls -lh /app/data/cookies.txt
 ```
 
 **View cookie age:**
 ```bash
-docker exec zenith-downloader stat /app/data/cookies.txt
+docker exec Youtube-downloader stat /app/data/cookies.txt
 ```
 
 **Delete cookies:**
 ```bash
-docker exec zenith-downloader rm /app/data/cookies.txt
+docker exec Youtube-downloader rm /app/data/cookies.txt
 ```
 
 **Copy cookies out of container:**
 ```bash
-docker cp zenith-downloader:/app/data/cookies.txt ./cookies-backup.txt
+docker cp Youtube-downloader:/app/data/cookies.txt ./cookies-backup.txt
 ```
 
 ### Backup Cookies
@@ -255,7 +255,7 @@ To backup your cookies:
 
 ```bash
 # Create backup
-docker cp zenith-downloader:/app/data/cookies.txt ./cookies-backup-$(date +%Y%m%d).txt
+docker cp Youtube-downloader:/app/data/cookies.txt ./cookies-backup-$(date +%Y%m%d).txt
 
 # Restore from backup
 # Use admin panel to upload the backup file
@@ -331,7 +331,7 @@ A: Yes, but all downloads appear to be from that YouTube account.
 If you encounter issues:
 
 1. Check this guide's troubleshooting section
-2. Check application logs: `docker logs zenith-downloader`
+2. Check application logs: `docker logs Youtube-downloader`
 3. Test cookies in admin panel
 4. Verify admin password is set correctly
 5. Open an issue on GitHub with error details

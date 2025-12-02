@@ -1,4 +1,4 @@
-# Zenith Downloader
+# Youtube Downloader
 
 A high-performance video downloader built with Next.js. Features a beautiful dark UI, AI-powered filename suggestions, and real-time download progress.
 
@@ -27,16 +27,16 @@ ssh root@YOUR_SERVER_IP
 curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
 
 # 3. Create project directory
-mkdir -p /opt/zenith-downloader && cd /opt/zenith-downloader
+mkdir -p /opt/Youtube-downloader && cd /opt/Youtube-downloader
 
 # 4. Download production docker-compose file
-wget https://raw.githubusercontent.com/YOUR_USERNAME/zenith-downloader/main/docker-compose.prod.yml -O docker-compose.yml
+wget https://raw.githubusercontent.com/YOUR_USERNAME/Youtube-downloader/main/docker-compose.prod.yml -O docker-compose.yml
 
 # 5. Create .env file with your API key
 echo "GEMINI_API_KEY=your_key_here" > .env
 
 # 6. Pull and start
-docker pull jaypokharna/zenith-downloader:latest
+docker pull jaypokharna/Youtube-downloader:latest
 docker-compose up -d
 
 # 7. Access at http://YOUR_SERVER_IP
@@ -279,7 +279,7 @@ Access the admin panel at `/admin` to:
 
 ### Can't access admin panel?
 - Ensure `ADMIN_PASSWORD` is set in `.env` file
-- Check logs: `docker logs zenith-downloader`
+- Check logs: `docker logs Youtube-downloader`
 - Try clearing browser cache
 
 ### AI rename not working?

@@ -18,6 +18,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '100mb',
     },
+    instrumentationHook: true, // Enable instrumentation for background services
   },
 
   // Disable response body size limit for streaming large files
