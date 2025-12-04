@@ -3,14 +3,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: Youtube-downloader
+    container_name: youtube-downloader
     restart: unless-stopped
     ports:
       - "80:3000"
     volumes:
       # Persistent data directory for cookies and other app data
       # Data persists across container restarts and rebuilds
-      - Youtube-data:/app/data
+      - youtube-data:/app/data
     env_file:
       - .env
     environment:
@@ -25,5 +25,5 @@ services:
       start_period: 40s
 
 volumes:
-  Youtube-data:
+  youtube-data:
     driver: local

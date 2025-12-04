@@ -3,15 +3,15 @@
 
 services:
   web:
-    image: jaypokharna/Youtube-downloader:latest
-    container_name: Youtube-downloader
+    image: jaypokharna/youtube-downloader:latest
+    container_name: youtube-downloader
     restart: unless-stopped
     ports:
       - "80:3000"
     volumes:
       # Persistent data directory for cookies and other app data
       # Data persists across container restarts and image updates
-      - Youtube-data:/app/data
+      - youtube-data:/app/data
     env_file:
       - .env
     environment:
@@ -34,5 +34,5 @@ services:
       start_period: 40s
 
 volumes:
-  Youtube-data:
+  youtube-data:
     driver: local
